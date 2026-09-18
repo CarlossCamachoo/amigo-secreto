@@ -943,7 +943,7 @@ const TRACK_API = 'https://abacus.jasoncameron.dev';
 // ?demo=1 → tablero de prueba aparte (código DEMO): los links de prueba pintan ahí, nunca en el real
 const DEMO = new URLSearchParams(location.search).has('demo');
 const BOARD_SID = DEMO ? 'DEMO' : CONFIG.sorteoHecho;
-const trackNs = () => `amigo-secreto-cc-${String(BOARD_SID).toLowerCase()}`;
+const trackNs = () => DEMO ? 'amigo-secreto-cc-demo-v2' : `amigo-secreto-cc-${String(BOARD_SID).toLowerCase()}`;
 function nameKey(n) {
   let h = 2166136261;
   for (const ch of norm(n)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
@@ -953,7 +953,7 @@ const BKEY = `amigo-secreto-tablero-${BOARD_SID}`, RKEY = 'amigo-secreto-reporta
 const discovered = new Set(store.get(BKEY, []));
 function reportDiscovered(giver, sid) {
   if (!CONFIG.sorteoHecho || sid !== BOARD_SID) return;   // los links de prueba no cuentan en el tablero real
-  const id = `${sid}|${giver}`;
+  const id = `${trackNs()}|${giver}`;
   if (store.get(RKEY, []).includes(id)) return;
   fetch(`${TRACK_API}/hit/${trackNs()}/${nameKey(giver)}`, { cache: 'no-store' })
     .then(r => { if (r.ok) { const d = store.get(RKEY, []); if (!d.includes(id)) { d.push(id); store.set(RKEY, d); } } })
@@ -1371,7 +1371,7 @@ bowl.addEventListener('click', async () => {
     const ok = await ask({
       title: `¿Eres ${g}?`,
       text: `Este papelito es solo para ${g}. Si te reenviaron este link, no lo abras: dañarías la sorpresa 🙈`,
-      yes: `Sí, soy ${g}`, no: 'No soy yo'
+      yes: 'Sí, soy', no: 'No soy'
     });
     busy = false;
     if (!ok) { $('#drawHint').textContent = `Este papelito es de ${g}. Pídele a quien organiza tu propio link 🙂`; return; }
@@ -1670,9 +1670,9 @@ function openFromLink() {
   if (me && me.s === p.s && me.g !== p.g) {
     const saved = drawCtx; drawCtx = null;
     ask({
-      title: `Este link es de ${p.g}`,
+      title: `¿Eres ${p.g}?`,
       text: `En este celular ya se abrió el papelito de ${me.g}. Si no eres ${p.g}, no lo abras para no dañar la sorpresa 🙈`,
-      yes: `Soy ${p.g}`, no: 'No lo abro'
+      yes: 'Sí, soy', no: 'No soy'
     }).then(ok => {
       if (ok) { drawCtx = saved; drawCtx.confirmed = true; store.set('amigo-secreto-yo', { s: p.s, g: p.g }); }
       else $('#drawHint').textContent = `Este papelito es de ${p.g}. Pídele a quien organiza tu propio link 🙂`;
