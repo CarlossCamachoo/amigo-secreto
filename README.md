@@ -20,6 +20,15 @@ Al inicio del `<script>` en `index.html` está el bloque `CONFIG`: ahí van el e
 - **Autodestrucción:** al descubrir el nombre aparece un letrero con cuenta regresiva de 15 segundos (con 3·2·1 gigante al final) y el papelito se destruye; el botón “Guardar el secreto” lo destruye al instante. Si se vuelve a abrir el link en ese celular, solo sale “Esta página se autodestruyó” (con la fecha, hora y lugar).
 - Haz el sorteo **una sola vez y desde un solo celular**, y envía todos los links desde ahí.
 
+## Anti-trampa (hasta donde permite una página web)
+
+- Al abrir un link, la dirección se limpia: si comparten o copian desde el navegador, no va el papelito.
+- Antes de descubrir pregunta “¿Eres [nombre]?”.
+- El papelito tiene marca de agua “Solo para [nombre] · No compartir”.
+- Si la persona sale de la página con el nombre en pantalla, se oculta y se destruye.
+- El nombre no se puede seleccionar, copiar ni imprimir.
+- Una página web no puede bloquear capturas de pantalla ni que alguien reenvíe el link original de WhatsApp; eso solo lo logra una app nativa o un servidor.
+
 ## Cómo se usa
 
 1. Escribe el nombre del evento, el presupuesto y la fecha (opcionales).

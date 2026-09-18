@@ -438,7 +438,13 @@ input{font:inherit}
   content:"";position:absolute;left:0;right:0;top:0;height:26px;
   background:linear-gradient(180deg,#00000026,transparent);
 }
-.note-name{
+.note-bottom{overflow:hidden}
+.watermark{
+  position:absolute;inset:-60% -30%;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;
+  gap:12px 22px;transform:rotate(-16deg);pointer-events:none;
+  font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;line-height:1.2;color:#2b171217;
+}
+.note-name{position:relative;z-index:1;
   font-family:var(--hand);font-weight:700;color:var(--ink);line-height:.9;
   transform:rotate(-3deg);text-align:center;word-break:break-word;
 }
@@ -569,6 +575,9 @@ input{font:inherit}
 .meta-card span:first-child{font-size:22px}
 .meta-card:empty{display:none}
 
+.overlay{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.overlay.hide-name .note-name,.overlay.hide-name .watermark{visibility:hidden}
+@media print{body{display:none !important}}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
   .bg-bits{display:none}
@@ -759,7 +768,7 @@ input{font:inherit}
   <div class="note-stage">
     <div class="note-fly" id="noteFly">
       <div class="note" id="note" role="button" tabindex="0" aria-label="Abrir papelito">
-        <div class="note-bottom paper-tex"><span class="note-name" id="noteName"></span></div>
+        <div class="note-bottom paper-tex"><div class="watermark" id="watermark" aria-hidden="true"></div><span class="note-name" id="noteName"></span></div>
         <div class="note-flap">
           <div class="flap-front paper-tex"><span class="note-label"><small id="noteFrom">Tu papelito</small>te tocó…</span></div>
           <div class="flap-back paper-tex"><span class="seal">🤫</span><span class="tap-open">toca para abrir</span></div>
@@ -1311,6 +1320,18 @@ $('#discoverBtn').addEventListener('click', () => bowl.click());
 
 bowl.addEventListener('click', async () => {
   if (busy || !drawCtx) return;
+  if (drawCtx.mode === 'link' && !drawCtx.confirmed) {
+    const g = drawCtx.giver;
+    busy = true;
+    const ok = await ask({
+      title: `¿Eres ${g}?`,
+      text: `Este papelito es solo para ${g}. Si te reenviaron este link, no lo abras: dañarías la sorpresa 🙈`,
+      yes: `Sí, soy ${g}`, no: 'No soy yo'
+    });
+    busy = false;
+    if (!ok) { $('#drawHint').textContent = `Este papelito es de ${g}. Pídele a quien organiza tu propio link 🙂`; return; }
+    drawCtx.confirmed = true;
+  }
   busy = true;
   audio.init();
   bowl.classList.add('shaking');
@@ -1332,6 +1353,8 @@ function fitName() {
 function launchNote() {
   $('#noteName').textContent = drawCtx.receiver;
   $('#noteFrom').textContent = `Papelito de ${drawCtx.giver}`;
+  $('#watermark').innerHTML = Array(14).fill(`<span>Solo para ${esc(drawCtx.giver)} · No compartir</span>`).join('');
+  reveal.classList.remove('hide-name');
   note.classList.remove('open', 'landed');
   reveal.classList.remove('opened', 'quake');
   revealInfo.classList.remove('show');
@@ -1377,7 +1400,7 @@ function boom() {
   audio.boom(); audio.fanfare();
   vibrate([40, 30, 110]);
   setTimeout(() => revealInfo.classList.add('show'), 750);
-  if (drawCtx.mode === 'link') { markDestroyed(drawCtx); setTimeout(startSelfDestruct, 250); }
+  if (drawCtx.mode === 'link') { markDestroyed(drawCtx); armLeaveGuard(); setTimeout(startSelfDestruct, 250); }
 }
 
 /* ---------- autodestrucción (solo links) ---------- */
@@ -1388,6 +1411,21 @@ function markDestroyed(c) {
   const list = store.get(DKEY, []);
   if (!list.includes(destroyedId(c))) { list.push(destroyedId(c)); store.set(DKEY, list); }
 }
+// si sale de la página con el nombre en pantalla (a WhatsApp, cámara, grabar pantalla…), se destruye
+function armLeaveGuard() {
+  const onLeave = () => {
+    if (!drawCtx || drawCtx.mode !== 'link' || destroying) return;
+    reveal.classList.add('hide-name');
+    destroyPage();
+  };
+  window.addEventListener('blur', onLeave, { once: true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) onLeave(); }, { once: true });
+}
+reveal.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('copy', e => { if (!reveal.hidden) e.preventDefault(); });
+document.addEventListener('keyup', e => {
+  if (e.key === 'PrintScreen' && drawCtx && drawCtx.mode === 'link' && !reveal.hidden) { reveal.classList.add('hide-name'); destroyPage(); }
+});
 let sdTimer = null;
 function startSelfDestruct() {
   const sd = $('#selfDestruct');
@@ -1561,11 +1599,21 @@ function renderDone() {
 $('#doneList').addEventListener('click', () => { renderTurns(); show('v-turns'); });
 
 /* ---------- arranque ---------- */
+const LKEY = 'amigo-secreto-link';
 function openFromLink() {
+  let code = null;
   const m = location.hash.match(/^#s=([\w-]+)/);
-  if (!m) return false;
+  if (m) {
+    code = m[1];
+    try { sessionStorage.setItem(LKEY, code); } catch (e) {}
+    // la dirección queda limpia: si comparten o copian desde el navegador, no va el papelito
+    try { history.replaceState(null, '', baseUrl()); } catch (e) {}
+  } else {
+    try { code = sessionStorage.getItem(LKEY); } catch (e) {}
+  }
+  if (!code) return false;
   let p = null;
-  try { p = decode(m[1]); } catch (e) {}
+  try { p = decode(code); } catch (e) {}
   if (!p || !p.g || !p.r) { toast('Ese link no es válido 😕'); return false; }
   const ev = { name: p.e, budget: p.b || '', date: p.d || '', time: p.h || '', place: p.l || '', sid: p.s };
   if (isDestroyed({ giver: p.g, ev })) { showDestroyed(p.g, ev); return true; }
@@ -1580,7 +1628,7 @@ function openFromLink() {
       text: `En este celular ya se abrió el papelito de ${me.g}. Si no eres ${p.g}, no lo abras para no dañar la sorpresa 🙈`,
       yes: `Soy ${p.g}`, no: 'No lo abro'
     }).then(ok => {
-      if (ok) { drawCtx = saved; store.set('amigo-secreto-yo', { s: p.s, g: p.g }); }
+      if (ok) { drawCtx = saved; drawCtx.confirmed = true; store.set('amigo-secreto-yo', { s: p.s, g: p.g }); }
       else $('#drawHint').textContent = `Este papelito es de ${p.g}. Pídele a quien organiza tu propio link 🙂`;
     });
   } else store.set('amigo-secreto-yo', { s: p.s, g: p.g });
