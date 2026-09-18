@@ -186,7 +186,10 @@ input{font:inherit}
 .invite-list small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:2px}
 .invite-list b{display:block;font-size:17px;font-weight:600;line-height:1.25;color:var(--ink)}
 .invite-list b.tbd{font-weight:500;font-style:italic;color:#6f544699}
-.invite-list .map{display:inline-block;margin-top:3px;font-size:13.5px;font-weight:700;color:var(--red);text-decoration:none}
+.is-locked .add,.is-locked .hint,.is-locked .chip button,.is-locked #editEvent,.is-locked #eventForm{display:none !important}
+.is-locked .chip{padding-right:12px}
+.locked p{margin:0;font-size:15px;line-height:1.5;color:var(--ink-soft)}
+.locked .count{font-size:16px;letter-spacing:.1em;padding:0 12px}
 .edit-btn{
   display:block;margin:8px 12px 12px auto;padding:10px 8px;background:none;border:none;
   font-size:14px;font-weight:700;color:var(--ink-soft);
@@ -604,6 +607,10 @@ input{font:inherit}
     </div>
 
     <button class="btn btn-big" id="drawBtn">🎲 Hacer el sorteo</button>
+    <div class="card paper locked" id="lockedNote" hidden>
+      <div class="card-head"><h2>🔒 Sorteo hecho</h2><span class="count" id="lockedSid"></span></div>
+      <p>Cada persona ya recibió su link para descubrir a su amigo secreto. No se puede hacer otro sorteo, así nadie queda repetido.</p>
+    </div>
   </section>
 
   <!-- 2. Elegir modo -->
@@ -783,6 +790,7 @@ const CONFIG = {
   hora: '16:00',            // formato 24 h: '16:00' = 4:00 p. m.
   lugar: 'Bucarica Country Club · Apto 504',
   modo: 'links',            // 'links' = un link para cada uno · '' = preguntar
+  sorteoHecho: 'K6E3',      // código del sorteo ya enviado: bloquea hacer otro (déjalo en '' para permitirlo)
   participantes: [
     'Carlos Andres',
     'Mafe Velasquez',
@@ -842,12 +850,11 @@ function fmtTime(t) {
   return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'a. m.' : 'p. m.'}`;
 }
 const fmtWhen = ev => [fmtDate(ev.date), fmtTime(ev.time)].filter(Boolean).join(' · ');
-const mapsUrl = place => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(place.replace(/·.*$/, '').trim());
 function metaLines(ev) {
   const out = [];
   if (ev.budget) out.push(['💰', `Presupuesto: <b>${esc(ev.budget)}</b>`]);
   if (ev.date || ev.time) out.push(['📅', `<b>${esc(fmtWhen(ev))}</b>`]);
-  if (ev.place) out.push(['📍', `<a href="${esc(mapsUrl(ev.place))}" target="_blank" rel="noopener" style="color:inherit"><b>${esc(ev.place)}</b></a>`]);
+  if (ev.place) out.push(['📍', `<b>${esc(ev.place)}</b>`]);
   return out;
 }
 
@@ -873,6 +880,8 @@ const configDupes = [];
 const SID_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const makeSid = () => Array.from({ length: 4 }, () => SID_CHARS[Math.floor(Math.random() * SID_CHARS.length)]).join('');
 if (state.pairs && !state.sid) { state.sid = makeSid(); save(); }
+// sorteo ya enviado: ignorar cualquier sorteo de prueba guardado en este celular
+if (CONFIG.sorteoHecho && state.sid !== CONFIG.sorteoHecho) { state.pairs = null; state.mode = null; state.seen = {}; state.sent = {}; save(); }
 const sentCount = () => Object.keys(state.sent || {}).length;
 
 /* ---------- sonido (sintetizado, sin archivos) ---------- */
@@ -1117,7 +1126,7 @@ function renderInvite() {
   const row = (ico, label, val) => `<li><span class="ico">${ico}</span><span><small>${label}</small>${val}</span></li>`;
   $('#invList').innerHTML =
     row('🕓', 'Hora', ev.time ? `<b>${esc(fmtTime(ev.time))}</b>` : tbd) +
-    row('📍', 'Lugar', ev.place ? `<b>${esc(ev.place)}</b><a class="map" href="${esc(mapsUrl(ev.place))}" target="_blank" rel="noopener">Ver en el mapa →</a>` : tbd) +
+    row('📍', 'Lugar', ev.place ? `<b>${esc(ev.place)}</b>` : tbd) +
     row('🎁', 'Presupuesto', ev.budget ? `<b>${esc(ev.budget)}</b>` : tbd);
 }
 function fillEvent() {
@@ -1552,6 +1561,12 @@ addEventListener('hashchange', () => location.reload());
 
 fillEvent();
 renderChips();
+if (CONFIG.sorteoHecho) {
+  document.body.classList.add('is-locked');
+  $('#drawBtn').hidden = true;
+  $('#lockedNote').hidden = false;
+  $('#lockedSid').textContent = CONFIG.sorteoHecho;
+}
 if (configDupes.length && !location.hash) {
   $('#setupError').textContent = `En la lista hay nombres repetidos (${configDupes.join(', ')}). Si son personas distintas, agrégales el apellido.`;
 }
