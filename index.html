@@ -592,6 +592,21 @@ input{font:inherit}
 .boom-ico{font-size:88px;line-height:1;margin:6px 0 10px}
 .view.active > .boom-ico{animation:pop-in .6s cubic-bezier(.3,1.6,.5,1) both}
 .fine{margin:18px 0 0;font-size:13.5px;color:#f7eedb99}
+/* deseos */
+.reveal-info .wishes{
+  margin:0 0 12px;padding:12px 18px 14px;border-radius:18px;text-align:left;
+  background:var(--paper);color:var(--ink);transform:rotate(-1deg);
+  box-shadow:0 0 0 3px var(--gold),0 18px 30px -12px #000c;
+}
+.w-title{margin:0 0 6px;font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+.wish-list{margin:0;padding:0 0 0 26px;font-family:var(--hand);font-weight:700;font-size:27px;line-height:1.12;color:var(--ink)}
+.wish-list li::marker{color:var(--red);font-family:var(--body);font-weight:800;font-size:16px}
+.wish-card{text-align:left;margin:22px 0 0;box-shadow:0 0 0 3px var(--gold),0 3px 0 #cdb58a,0 22px 40px -18px #000c}
+.wish-card .w-empty{margin:0;font-size:15px;line-height:1.45;color:var(--ink-soft)}
+.my-wishes{margin-top:22px}
+.my-wishes p{margin:0 0 12px;font-size:14.5px;line-height:1.45;color:#f7eedbcc}
+#wishSheet .sheet{max-height:92vh;overflow:auto}
+#wishSheet .field{margin-bottom:12px}
 
 .meta-card{padding:18px;margin:22px 0 6px;display:grid;gap:10px;font-size:16px}
 .meta-card div{display:flex;gap:10px;align-items:center}
@@ -661,7 +676,7 @@ input{font:inherit}
         <p id="boardText">Revisando quién ya descubrió…</p>
       </div>
       <ul class="chips" id="chips"></ul>
-      <p class="legend" id="boardLegend" hidden><span class="dot"></span> En verde: ya descubrieron a su amigo secreto</p>
+      <p class="legend" id="boardLegend" hidden><span class="dot"></span> En verde: ya descubrieron a su amigo secreto · 📝 ya dejó su lista de deseos</p>
       <p class="error" id="setupError"></p>
     </div>
 
@@ -768,7 +783,12 @@ input{font:inherit}
     <p class="kicker" id="destroyedFor">Papelito</p>
     <h1 class="title sm">Esta página se <em>autodestruyó</em></h1>
     <p class="lede">Ya descubriste a tu amigo secreto. Ahora a guardar el secreto y buscar un buen regalo 🤫🎁</p>
+    <div class="card paper wish-card" id="destroyedWishes" hidden></div>
     <div class="meta-card paper" id="destroyedMeta"></div>
+    <div class="my-wishes" id="myWishes" hidden>
+      <p id="myWishesText"></p>
+      <button class="btn" id="sendWishes">✍️ Enviar mis 3 deseos</button>
+    </div>
     <p class="fine">Si de verdad se te olvidó, habla con quien organizó el juego.</p>
     <button class="btn-ghost" id="seeBoard" hidden>👀 Ver quién falta por descubrir</button>
   </section>
@@ -802,8 +822,9 @@ input{font:inherit}
     </div>
   </div>
   <div class="reveal-info" id="revealInfo">
+    <div class="wishes" id="revealWishes" hidden></div>
     <div class="meta" id="revealMeta"></div>
-    <p class="shh">Shhh… que nadie se entere 🤫</p>
+    <p class="shh" id="revealShh">Shhh… que nadie se entere 🤫</p>
     <button class="btn" id="revealDone">Ya lo memoricé 🤐</button>
   </div>
 </div>
@@ -830,6 +851,20 @@ input{font:inherit}
 </div>
 
 <div class="big-count" id="bigCount" aria-live="assertive" hidden></div>
+<div class="sheet-back" id="wishSheet" hidden>
+  <form class="sheet paper" id="wishForm" role="dialog" aria-modal="true" aria-labelledby="wishTitle">
+    <h3 id="wishTitle">✍️ Tus 3 deseos</h3>
+    <p>Escribe 3 regalos que te gustaría recibir. Se le envían a quien organiza para que los agregue, y solo los verá quien te sacó 🤫</p>
+    <label class="field"><span>Regalo 1</span><input id="wish1" maxlength="60" placeholder="Ej: Unas medias divertidas"></label>
+    <label class="field"><span>Regalo 2</span><input id="wish2" maxlength="60" placeholder="Ej: Un libro"></label>
+    <label class="field"><span>Regalo 3</span><input id="wish3" maxlength="60" placeholder="Ej: Chocolates"></label>
+    <div class="sheet-actions" style="margin-top:18px">
+      <button class="btn-ghost dark" type="button" id="wishCancel">Cancelar</button>
+      <button class="btn" type="submit">Enviar por WhatsApp</button>
+    </div>
+  </form>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 
@@ -862,7 +897,14 @@ const CONFIG = {
     'El Mono',
     'Adriana',
     'Juanda'
-  ]
+  ],
+  organizador: 'Carlos Andres',
+  whatsappOrganizador: '',  // opcional, con indicativo y sin espacios, ej: '573001234567'
+  // 🎁 Deseos: hasta 3 regalos que le gustaría recibir a cada persona.
+  // Los ve solo quien le tocó esa persona, justo debajo del nombre al descubrirlo.
+  deseos: {
+    // 'Carlos Andres': ['Medias', 'Bóxer', 'Calzoncillos'],
+  }
 };
 
 (() => {
@@ -915,6 +957,14 @@ function metaLines(ev) {
   if (ev.place) out.push(['📍', `<b>${esc(ev.place)}</b>`]);
   return out;
 }
+
+/* ---------- deseos (CONFIG.deseos) ---------- */
+function wishesFor(name) {
+  const d = CONFIG.deseos || {};
+  const k = Object.keys(d).find(x => norm(x.trim()) === norm(name || ''));
+  return k ? (d[k] || []).map(w => String(w).trim()).filter(Boolean).slice(0, 3) : [];
+}
+const wishesHtml = list => `<ol class="wish-list">${list.map(w => `<li>${esc(w)}</li>`).join('')}</ol>`;
 
 /* ---------- lista precargada (CONFIG) ---------- */
 const configDupes = [];
@@ -1232,7 +1282,7 @@ $('#editEvent').addEventListener('click', () => setEditing($('#eventForm').hidde
 function renderChips() {
   const list = $('#chips');
   list.innerHTML = state.people.length
-    ? state.people.map((p, i) => `<li class="chip${CONFIG.sorteoHecho && discovered.has(p) ? ' done' : ''}" style="--rot:${rot(i)}deg">${esc(p)}<button type="button" data-i="${i}" aria-label="Quitar ${esc(p)}">×</button></li>`).join('')
+    ? state.people.map((p, i) => `<li class="chip${CONFIG.sorteoHecho && discovered.has(p) ? ' done' : ''}" style="--rot:${rot(i)}deg">${esc(p)}${CONFIG.sorteoHecho && wishesFor(p).length ? ' 📝' : ''}<button type="button" data-i="${i}" aria-label="Quitar ${esc(p)}">×</button></li>`).join('')
     : '<li class="empty">Todavía no hay nadie… ¡agrega al primero!</li>';
   const c = $('#count');
   c.textContent = CONFIG.sorteoHecho ? `${state.people.filter(p => discovered.has(p)).length}/${state.people.length}` : state.people.length;
@@ -1415,6 +1465,11 @@ function launchNote() {
   const lines = metaLines(drawCtx.ev);
   $('#revealMeta').innerHTML = lines.map(([i, t]) => `<div class="mrow"><span>${i}</span><span>${t}</span></div>`).join('');
   $('#revealMeta').hidden = !lines.length;
+  const wl = wishesFor(drawCtx.receiver);
+  $('#revealWishes').innerHTML = wl.length ? `<p class="w-title">🎁 Le gustaría recibir</p>${wishesHtml(wl)}` : '';
+  $('#revealWishes').hidden = !wl.length;
+  if (wl.length) $('#revealMeta').hidden = true;     // con deseos, la info del evento queda en la pantalla final
+  $('#revealShh').hidden = !!wl.length;
   reveal.classList.toggle('link-mode', drawCtx.mode === 'link');
   reveal.hidden = false;
   fitName();
@@ -1529,15 +1584,56 @@ function destroyPage() {
     await closeReveal();
     note.classList.remove('destroying');
     destroying = false;
-    showDestroyed(ctx.giver, ctx.ev);
+    showDestroyed(ctx.giver, ctx.ev, ctx.receiver);
   }, 1500);
 }
-function showDestroyed(giver, ev) {
+let wishGiver = null;
+function showDestroyed(giver, ev, receiver) {
   drawCtx = null;
+  wishGiver = giver;
   $('#destroyedFor').textContent = `Papelito de ${giver}`;
   $('#destroyedMeta').innerHTML = metaLines(ev).map(([i, t]) => `<div><span>${i}</span><span>${t}</span></div>`).join('');
+  // lista de deseos de su amigo secreto (sin decir el nombre)
+  const wl = receiver ? wishesFor(receiver) : [];
+  const box = $('#destroyedWishes');
+  box.hidden = !receiver;
+  box.innerHTML = '<p class="w-title">🎁 Lista de deseos de tu amigo secreto</p>' + (wl.length
+    ? wishesHtml(wl)
+    : '<p class="w-empty">Todavía no ha dejado su lista. Vuelve a abrir tu link más adelante 😉</p>');
+  // sus propios deseos
+  const mine = wishesFor(giver);
+  $('#myWishes').hidden = false;
+  $('#myWishesText').textContent = mine.length
+    ? `✅ Tus deseos ya están en la lista: ${mine.join(', ')}.`
+    : '¿Y tú qué quieres recibir? Envía tus 3 deseos para que le lleguen a quien te sacó 🎁';
+  $('#sendWishes').textContent = mine.length ? '✍️ Cambiar mis deseos' : '✍️ Enviar mis 3 deseos';
   show('v-destroyed');
 }
+$('#sendWishes').addEventListener('click', () => {
+  const mine = wishesFor(wishGiver);
+  ['#wish1', '#wish2', '#wish3'].forEach((id, i) => { $(id).value = mine[i] || ''; });
+  const sh = $('#wishSheet');
+  sh.hidden = false;
+  requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add('in')));
+});
+function closeWishSheet() {
+  const sh = $('#wishSheet');
+  sh.classList.remove('in');
+  setTimeout(() => { sh.hidden = true; }, 300);
+}
+$('#wishCancel').addEventListener('click', closeWishSheet);
+$('#wishSheet').addEventListener('click', e => { if (e.target.id === 'wishSheet') closeWishSheet(); });
+$('#wishForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const w = ['#wish1', '#wish2', '#wish3'].map(id => $(id).value.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (!w.length) { toast('Escribe al menos un regalo 🎁'); return; }
+  const msg = `🎁 Mis deseos para el *Amigo Secreto*\nDe: ${wishGiver}\n\n` + w.map((x, i) => `${i + 1}. ${x}`).join('\n') +
+    `\n\n(${CONFIG.organizador || 'Organizador'}, agrégalos a la página 🙏)`;
+  const num = String(CONFIG.whatsappOrganizador || '').replace(/\D/g, '');
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+  closeWishSheet();
+  toast('Envíale el mensaje a ' + (CONFIG.organizador || 'quien organiza') + ' 📲');
+});
 function closeReveal() {
   reveal.classList.remove('in');
   return wait(300).then(() => { reveal.hidden = true; reveal.classList.remove('opened', 'quake'); });
@@ -1696,7 +1792,7 @@ function openFromLink() {
   try { p = parseCode(code); } catch (e) {}
   if (!p || !p.g || !p.r) { toast('Ese link no es válido 😕'); return false; }
   const ev = { name: p.e, budget: p.b || '', date: p.d || '', time: p.h || '', place: p.l || '', sid: p.s };
-  if (isDestroyed({ giver: p.g, ev })) { reportDiscovered(p.g, p.s); showDestroyed(p.g, ev); return true; }
+  if (isDestroyed({ giver: p.g, ev })) { reportDiscovered(p.g, p.s); showDestroyed(p.g, ev, p.r); return true; }
   openDraw(p.g, p.r, 'link', ev);
   const tag = $('#drawSid');
   if (p.s) { tag.textContent = `Código del sorteo · ${p.s}`; tag.hidden = false; }
