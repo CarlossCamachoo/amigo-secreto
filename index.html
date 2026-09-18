@@ -477,8 +477,17 @@ input{font:inherit}
   transition:opacity .45s,transform .45s cubic-bezier(.2,.8,.2,1);
 }
 .reveal-info.show{opacity:1;transform:none;pointer-events:auto}
-.reveal-info .meta{margin:0 0 16px;font-size:15px;line-height:1.5;color:#f7eedbd9}
-.reveal-info .meta b{color:var(--gold)}
+.overlay.link-mode .note-stage{margin-top:-15vh}
+.reveal-info .meta{
+  display:inline-grid;gap:9px;margin:0 0 8px;padding:14px 16px;text-align:left;width:100%;
+  font-size:18px;line-height:1.3;color:#f7eedbe6;
+  background:#14030aa6;border:1px solid #f7eedb26;border-radius:18px;
+}
+.reveal-info .meta .mrow{display:flex;gap:10px;align-items:flex-start}
+.reveal-info .meta .mrow > span:first-child{font-size:21px;line-height:1.1;flex:none}
+.reveal-info .meta b{color:var(--gold);font-weight:700}
+.reveal-info .shh{margin:0 0 14px;font-size:15.5px;color:#f7eedbc0}
+@media (max-height:700px){.reveal-info .meta{font-size:16.5px;gap:6px;padding:10px 14px}.reveal-info .shh{margin-bottom:10px}}
 
 /* hoja de confirmación */
 .sheet-back{
@@ -530,6 +539,19 @@ input{font:inherit}
 }
 .self-destruct.urgent .sd-count{animation:beat .5s ease-in-out infinite alternate}
 @keyframes beat{to{transform:scale(1.18)}}
+.big-count{position:fixed;inset:0;z-index:66;display:grid;place-items:center;pointer-events:none}
+.big-count span{
+  font-family:var(--display);font-size:min(62vw,340px);line-height:1;color:var(--red);
+  -webkit-text-stroke:6px var(--paper);paint-order:stroke fill;
+  text-shadow:0 12px 0 #7d1509,0 30px 60px #000c;
+  animation:countIn 1s cubic-bezier(.2,.9,.3,1) both;
+}
+@keyframes countIn{
+  0%{opacity:0;transform:scale(2.6) rotate(-12deg)}
+  25%{opacity:1;transform:scale(1) rotate(0)}
+  80%{opacity:1;transform:scale(.92)}
+  100%{opacity:0;transform:scale(.6)}
+}
 .note.destroying{animation:shred 1.15s cubic-bezier(.5,0,.75,0) forwards}
 @keyframes shred{
   0%{transform:none;filter:none}
@@ -746,7 +768,8 @@ input{font:inherit}
     </div>
   </div>
   <div class="reveal-info" id="revealInfo">
-    <p class="meta" id="revealMeta"></p>
+    <div class="meta" id="revealMeta"></div>
+    <p class="shh">Shhh… que nadie se entere 🤫</p>
     <button class="btn" id="revealDone">Ya lo memoricé 🤐</button>
   </div>
 </div>
@@ -768,11 +791,11 @@ input{font:inherit}
   <span class="sd-text">
     <strong>Ya sabes tu amigo secreto 🤫</strong>
     <small>Esta página se destruirá para que no vayas a hacer trampa 😏</small>
-    <button class="sd-now" id="sdNow" type="button">Destruir ya</button>
   </span>
   <span class="sd-count" id="sdCount">12</span>
 </div>
 
+<div class="big-count" id="bigCount" aria-live="assertive" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 
@@ -1313,9 +1336,11 @@ function launchNote() {
   reveal.classList.remove('opened', 'quake');
   revealInfo.classList.remove('show');
   $('#revealDone').textContent = 'Ya lo memoricé 🤐';
-  $('#revealDone').hidden = drawCtx.mode === 'link';
+  $('#revealDone').textContent = drawCtx.mode === 'link' ? 'Guardar el secreto 🤐' : 'Ya lo memoricé 🤐';
   const lines = metaLines(drawCtx.ev);
-  $('#revealMeta').innerHTML = (lines.map(l => l.join(' ')).join('<br>') || '') + (lines.length ? '<br>' : '') + 'Shhh… que nadie se entere 🤫';
+  $('#revealMeta').innerHTML = lines.map(([i, t]) => `<div class="mrow"><span>${i}</span><span>${t}</span></div>`).join('');
+  $('#revealMeta').hidden = !lines.length;
+  reveal.classList.toggle('link-mode', drawCtx.mode === 'link');
   reveal.hidden = false;
   fitName();
   requestAnimationFrame(() => {
@@ -1352,7 +1377,7 @@ function boom() {
   audio.boom(); audio.fanfare();
   vibrate([40, 30, 110]);
   setTimeout(() => revealInfo.classList.add('show'), 750);
-  if (drawCtx.mode === 'link') { markDestroyed(drawCtx); setTimeout(startSelfDestruct, 1700); }
+  if (drawCtx.mode === 'link') { markDestroyed(drawCtx); setTimeout(startSelfDestruct, 250); }
 }
 
 /* ---------- autodestrucción (solo links) ---------- */
@@ -1366,7 +1391,7 @@ function markDestroyed(c) {
 let sdTimer = null;
 function startSelfDestruct() {
   const sd = $('#selfDestruct');
-  let n = 12;
+  let n = 15;
   $('#sdCount').textContent = n;
   sd.classList.remove('urgent', 'floating');
   sd.hidden = false;
@@ -1377,16 +1402,23 @@ function startSelfDestruct() {
   sdTimer = setInterval(() => {
     n--;
     $('#sdCount').textContent = Math.max(n, 0);
-    audio.tick(n <= 3 ? 2 : 1);
-    if (n <= 3) { sd.classList.add('urgent'); vibrate(25); }
-    if (n <= 0) destroyPage();
+    if (n <= 0) { destroyPage(); return; }
+    audio.tick(n <= 3 ? 2.5 : 1);
+    if (n <= 3) { sd.classList.add('urgent'); vibrate(40); bigCount(n); }
   }, 1000);
 }
-$('#sdNow').addEventListener('click', destroyPage);
+function bigCount(n) {
+  const el = $('#bigCount');
+  el.hidden = false;
+  el.innerHTML = `<span>${n}</span>`;
+}
+let destroying = false;
 function destroyPage() {
   clearInterval(sdTimer);
   const sd = $('#selfDestruct');
-  if (sd.hidden || note.classList.contains('destroying')) return;
+  if (destroying || !drawCtx || drawCtx.mode !== 'link') return;
+  destroying = true;
+  $('#bigCount').hidden = true;
   sd.classList.remove('show');
   revealInfo.classList.remove('show');
   reveal.classList.remove('opened');
@@ -1405,6 +1437,7 @@ function destroyPage() {
     sd.hidden = true;
     await closeReveal();
     note.classList.remove('destroying');
+    destroying = false;
     showDestroyed(ctx.giver, ctx.ev);
   }, 1500);
 }
@@ -1426,11 +1459,7 @@ $('#revealDone').addEventListener('click', async () => {
     drawCtx = null;
     if (allSeen()) { renderDone(); show('v-done'); setTimeout(() => { confetti.rain(170); audio.fanfare(); }, 300); }
     else { renderTurns(); show('v-turns'); toast('🤐 ¡Listo! Pásale el celular a la siguiente persona'); }
-  } else {
-    await closeReveal();
-    resetBowl();
-    $('#drawHint').textContent = '¿Se te olvidó? Toca el tazón otra vez 😉';
-  }
+  } else destroyPage();
 });
 
 /* ---------- 5. links ---------- */

@@ -17,7 +17,7 @@ Al inicio del `<script>` en `index.html` está el bloque `CONFIG`: ahí van el e
 - La pantalla de links muestra **✅ Sorteo verificado** (todos tienen papelito, nadie se repite, nadie se sacó a sí mismo) sin revelar quién le tocó a quién.
 - Si ya enviaste links, hacer un sorteo nuevo pide doble confirmación, porque mezclar links viejos y nuevos crearía repetidos.
 - Si en un mismo celular se abre el link de otra persona, la página pregunta antes de mostrarlo.
-- **Autodestrucción:** al descubrir el nombre aparece un letrero con cuenta regresiva de 12 segundos y el papelito se destruye. Si se vuelve a abrir el link en ese celular, solo sale “Esta página se autodestruyó” (con la fecha, hora y lugar).
+- **Autodestrucción:** al descubrir el nombre aparece un letrero con cuenta regresiva de 15 segundos (con 3·2·1 gigante al final) y el papelito se destruye; el botón “Guardar el secreto” lo destruye al instante. Si se vuelve a abrir el link en ese celular, solo sale “Esta página se autodestruyó” (con la fecha, hora y lugar).
 - Haz el sorteo **una sola vez y desde un solo celular**, y envía todos los links desde ahí.
 
 ## Cómo se usa
