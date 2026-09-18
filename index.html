@@ -9,8 +9,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Amigo Secreto">
 <meta name="description" content="Sorteo de amigo secreto para la familia: cada quien saca su papelito.">
-<meta property="og:title" content="Amigo Secreto 🎁">
-<meta property="og:description" content="Abre tu link y saca tu papelito. ¡Es solo para ti! 🤫">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Amigo Secreto">
+<meta property="og:title" content="🎁 Amigo Secreto · ¡Descubre a quién le vas a dar regalo!">
+<meta property="og:description" content="Abre tu link y descubre a tu amigo secreto. Es solo para ti, ¡no lo compartas! 🤫">
+<meta property="og:url" content="https://carlosscamachoo.github.io/amigo-secreto/">
+<meta property="og:image" content="https://carlosscamachoo.github.io/amigo-secreto/og.jpg">
+<meta property="og:image:secure_url" content="https://carlosscamachoo.github.io/amigo-secreto/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Amigo Secreto: tazón con papelitos y banderines de corazones">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://carlosscamachoo.github.io/amigo-secreto/og.jpg">
 <title>Amigo Secreto</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎁</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -837,6 +848,7 @@ const CONFIG = {
   lugar: 'Bucarica Country Club · Apto 504',
   modo: 'links',            // 'links' = un link para cada uno · '' = preguntar
   sorteoHecho: 'K6E3',      // código del sorteo ya enviado: bloquea hacer otro (déjalo en '' para permitirlo)
+  // ⚠️ No cambies el orden ni borres nombres: los links cortos usan la posición de cada persona
   participantes: [
     'Carlos Andres',
     'Mafe Velasquez',
@@ -906,8 +918,9 @@ function metaLines(ev) {
 
 /* ---------- lista precargada (CONFIG) ---------- */
 const configDupes = [];
+const CONFIG_LIST = [];
 (function applyConfig() {
-  const list = [];
+  const list = CONFIG_LIST;
   (CONFIG.participantes || []).forEach(raw => {
     const n = cleanName(String(raw));
     if (!n) return;
@@ -1639,10 +1652,37 @@ function renderDone() {
 $('#doneList').addEventListener('click', () => { renderTurns(); show('v-turns'); });
 
 /* ---------- arranque ---------- */
+const SHORT_KEY = [0x61, 0x6d, 0x69, 0x67, 0x6f];
+const SHORT_ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function fnvByte(str) {
+  let h = 2166136261;
+  for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return (h >>> 0) & 0xff;
+}
+function decodeShort(t) {
+  if (!/^[A-Za-z0-9_-]{7}$/.test(t)) return null;
+  let b64 = t.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  const b = Uint8Array.from(atob(b64), (c, i) => c.charCodeAt(0) ^ SHORT_KEY[i % SHORT_KEY.length]);
+  if (b.length !== 5) return null;
+  const sidBits = (b[0] << 12) | (b[1] << 4) | (b[2] >> 4);
+  const gi = ((b[2] & 0x0f) << 2) | (b[3] >> 6), ri = b[3] & 0x3f;
+  let sid = '';
+  for (let i = 3; i >= 0; i--) sid += SHORT_ALPHA[(sidBits >> (i * 5)) & 31];
+  if (fnvByte(`${sid}|${gi}|${ri}`) !== b[4]) return null;
+  const g = CONFIG_LIST[gi], r = CONFIG_LIST[ri];
+  if (!g || !r || g === r) return null;
+  return { v: 2, s: sid, g, r, e: CONFIG.evento, b: CONFIG.presupuesto, d: CONFIG.fecha, h: CONFIG.hora, l: CONFIG.lugar };
+}
+function parseCode(code) {
+  if (code.startsWith('s=')) return decode(code.slice(2));
+  if (code.length > 20) return decode(code);          // formato largo guardado por una versión anterior
+  return decodeShort(code);
+}
 const LKEY = 'amigo-secreto-link';
 function openFromLink() {
   let code = null;
-  const m = location.hash.match(/^#s=([\w-]+)/);
+  const m = location.hash.match(/^#(s=[\w-]+|[A-Za-z0-9_-]{7})$/);
   if (m) {
     code = m[1];
     try { sessionStorage.setItem(LKEY, code); } catch (e) {}
@@ -1653,7 +1693,7 @@ function openFromLink() {
   }
   if (!code) return false;
   let p = null;
-  try { p = decode(code); } catch (e) {}
+  try { p = parseCode(code); } catch (e) {}
   if (!p || !p.g || !p.r) { toast('Ese link no es válido 😕'); return false; }
   const ev = { name: p.e, budget: p.b || '', date: p.d || '', time: p.h || '', place: p.l || '', sid: p.s };
   if (isDestroyed({ giver: p.g, ev })) { reportDiscovered(p.g, p.s); showDestroyed(p.g, ev); return true; }
