@@ -959,8 +959,23 @@ function metaLines(ev) {
 }
 
 /* ---------- deseos (CONFIG.deseos) ---------- */
+// deseos de ejemplo: solo en el modo prueba (?demo=1), nunca en el sorteo real
+const DEMO_WISHES = {
+  'Carlos Andres': ['Medias divertidas', 'Bóxer', 'Una gorra'],
+  'Mafe Velasquez': ['Un perfume', 'Aretes', 'Una taza bonita'],
+  'Yamile': ['Una planta', 'Chocolates', 'Una pijama'],
+  'David Rolando': ['Una billetera', 'Audífonos', 'Un buen vino'],
+  'David Alexander': ['Una camiseta', 'Tenis', 'Un termo'],
+  'Papi Rey': ['Una camisa', 'Un sombrero', 'Café de origen'],
+  'Olga': ['Una bufanda', 'Un libro de cocina', 'Crema de manos'],
+  'Juan Diego': ['Un balón', 'Una gorra', 'Dulces'],
+  'Valentina': ['Maquillaje', 'Un cuaderno bonito', 'Chocolates'],
+  'El Mono': ['Una camiseta de fútbol', 'Medias', 'Snacks'],
+  'Adriana': ['Una cartera', 'Velas aromáticas', 'Un perfume'],
+  'Juanda': ['Un juego de mesa', 'Audífonos', 'Una gorra']
+};
 function wishesFor(name) {
-  const d = CONFIG.deseos || {};
+  const d = DEMO ? DEMO_WISHES : (CONFIG.deseos || {});
   const k = Object.keys(d).find(x => norm(x.trim()) === norm(name || ''));
   return k ? (d[k] || []).map(w => String(w).trim()).filter(Boolean).slice(0, 3) : [];
 }
