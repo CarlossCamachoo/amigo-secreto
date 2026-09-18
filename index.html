@@ -155,8 +155,45 @@ input{font:inherit}
 .field input:focus,.add input:focus{border-color:var(--ink);box-shadow:0 0 0 4px #f5a52455}
 .field input[type=date]{display:flex;align-items:center}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.row2 .field{margin-bottom:0}
+.row2 .field{margin-bottom:0;min-width:0}
+.field input{min-width:0;max-width:100%}
 @media (max-width:360px){.row2{grid-template-columns:1fr}}
+.row2 + .field{margin-top:14px}
+
+/* tarjeta de invitación */
+.invite{padding:0}
+.invite-top{display:flex;gap:16px;align-items:center;padding:24px 18px 20px}
+.cal{
+  flex:none;width:84px;border-radius:12px;background:#fff;overflow:hidden;text-align:center;
+  transform:rotate(-4deg);box-shadow:0 8px 16px -8px #0007,0 0 0 1.5px #2b17121a;
+}
+.cal-m{display:block;background:var(--red);color:#fff;font-weight:800;font-size:12px;letter-spacing:.22em;padding:5px 0 4px 3px}
+.cal-d{display:block;font-family:var(--display);font-size:46px;line-height:1;color:var(--ink);padding-top:6px}
+.cal-w{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);padding:3px 0 9px}
+.invite-title{min-width:0}
+.invite-title small{display:block;font-family:var(--hand);font-weight:600;font-size:23px;line-height:1;color:var(--ink-soft)}
+.invite-title strong{display:block;font-family:var(--display);font-weight:400;font-size:31px;line-height:1.02;color:var(--ink);margin:3px 0 6px}
+.invite-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#c2185b;background:#ff5d8f1f;padding:4px 9px;border-radius:99px}
+.invite-sep{position:relative;margin:0 18px;border-top:2px dashed #2b171229}
+.invite-sep::before,.invite-sep::after{
+  content:"";position:absolute;top:-13px;width:24px;height:24px;border-radius:50%;background:#33081a;
+  box-shadow:inset 0 2px 4px #0006;
+}
+.invite-sep::before{left:-31px}
+.invite-sep::after{right:-31px}
+.invite-list{list-style:none;margin:0;padding:18px 18px 4px;display:grid;gap:14px}
+.invite-list li{display:grid;grid-template-columns:42px 1fr;gap:12px;align-items:center}
+.invite-list .ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:20px;background:#fff;box-shadow:0 0 0 1.5px #2b171214,0 4px 10px -6px #0005}
+.invite-list small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:2px}
+.invite-list b{display:block;font-size:17px;font-weight:600;line-height:1.25;color:var(--ink)}
+.invite-list b.tbd{font-weight:500;font-style:italic;color:#6f544699}
+.invite-list .map{display:inline-block;margin-top:3px;font-size:13.5px;font-weight:700;color:var(--red);text-decoration:none}
+.edit-btn{
+  display:block;margin:8px 12px 12px auto;padding:10px 8px;background:none;border:none;
+  font-size:14px;font-weight:700;color:var(--ink-soft);
+}
+.edit-btn:active{color:var(--ink)}
+.edit-form{margin:0 18px;padding:18px 0 20px;border-top:2px dashed #2b171229}
 
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .card-head h2{font-family:var(--display);font-weight:400;font-size:27px;margin:0}
@@ -493,24 +530,31 @@ input{font:inherit}
     <h1 class="title">Amigo<br><em>Secreto</em></h1>
     <p class="lede">Escribe los nombres, hacemos el sorteo y cada quien saca su papelito. Nadie se saca a sí mismo y ningún nombre se repite.</p>
 
-    <div class="card paper">
-      <label class="field"><span>Nombre del evento</span>
-        <input id="evName" maxlength="40" placeholder="Amigo Secreto en Familia">
-      </label>
-      <div class="row2">
-        <label class="field"><span>Presupuesto</span>
-          <input id="evBudget" maxlength="30" placeholder="Ej: $50.000" inputmode="text">
-        </label>
-        <label class="field"><span>Día del intercambio</span>
-          <input id="evDate" type="date">
-        </label>
+    <div class="card paper invite">
+      <div class="invite-top">
+        <div class="cal" aria-hidden="true"><span class="cal-m" id="calM"></span><span class="cal-d" id="calD"></span><span class="cal-w" id="calW"></span></div>
+        <div class="invite-title"><small>Estás invitado a</small><strong id="invName"></strong><span class="invite-tag">💕 Amor y amistad</span></div>
       </div>
-      <div class="row2" style="margin-top:14px">
-        <label class="field"><span>Hora</span>
-          <input id="evTime" type="time">
+      <div class="invite-sep"></div>
+      <ul class="invite-list" id="invList"></ul>
+      <button class="edit-btn" id="editEvent" type="button">✏️ Editar datos</button>
+      <div class="edit-form" id="eventForm" hidden>
+        <label class="field"><span>Nombre del evento</span>
+          <input id="evName" maxlength="40" placeholder="Amigo Secreto">
         </label>
         <label class="field"><span>Lugar</span>
           <input id="evPlace" maxlength="60" placeholder="Ej: Casa de la abuela">
+        </label>
+        <div class="row2">
+          <label class="field"><span>Día</span>
+            <input id="evDate" type="date">
+          </label>
+          <label class="field"><span>Hora</span>
+            <input id="evTime" type="time">
+          </label>
+        </div>
+        <label class="field"><span>Presupuesto</span>
+          <input id="evBudget" maxlength="30" placeholder="Ej: Mínimo $30.000">
         </label>
       </div>
     </div>
@@ -1007,13 +1051,36 @@ document.addEventListener('pointerdown', () => audio.init(), { once: true });
 
 /* ---------- 1. configuración ---------- */
 const evName = $('#evName'), evBudget = $('#evBudget'), evDate = $('#evDate'), evTime = $('#evTime'), evPlace = $('#evPlace');
+function renderInvite() {
+  const ev = state.event;
+  $('#invName').textContent = eventName();
+  const d = ev.date ? new Date(ev.date + 'T12:00:00') : null;
+  const okDate = d && !isNaN(d);
+  $('#calM').textContent = okDate ? d.toLocaleDateString('es', { month: 'short' }).replace('.', '').slice(0, 3).toUpperCase() : 'FECHA';
+  $('#calD').textContent = okDate ? d.getDate() : '?';
+  $('#calW').textContent = okDate ? d.toLocaleDateString('es', { weekday: 'long' }) : 'por definir';
+  const tbd = '<b class="tbd">Por definir</b>';
+  const row = (ico, label, val) => `<li><span class="ico">${ico}</span><span><small>${label}</small>${val}</span></li>`;
+  $('#invList').innerHTML =
+    row('🕓', 'Hora', ev.time ? `<b>${esc(fmtTime(ev.time))}</b>` : tbd) +
+    row('📍', 'Lugar', ev.place ? `<b>${esc(ev.place)}</b><a class="map" href="${esc(mapsUrl(ev.place))}" target="_blank" rel="noopener">Ver en el mapa →</a>` : tbd) +
+    row('🎁', 'Presupuesto', ev.budget ? `<b>${esc(ev.budget)}</b>` : tbd);
+}
 function fillEvent() {
   const ev = state.event;
   evName.value = ev.name || ''; evBudget.value = ev.budget || ''; evDate.value = ev.date || '';
   evTime.value = ev.time || ''; evPlace.value = ev.place || '';
+  renderInvite();
+  if (!ev.name && !ev.date && !ev.place) setEditing(true);
 }
+function setEditing(on) {
+  $('#eventForm').hidden = !on;
+  $('#editEvent').textContent = on ? '✓ Listo' : '✏️ Editar datos';
+}
+$('#editEvent').addEventListener('click', () => setEditing($('#eventForm').hidden));
 [evName, evBudget, evDate, evTime, evPlace].forEach(el => el.addEventListener('input', () => {
   state.event = { name: evName.value, budget: evBudget.value.trim(), date: evDate.value, time: evTime.value, place: evPlace.value.trim() }; save();
+  renderInvite();
 }));
 
 function renderChips() {
