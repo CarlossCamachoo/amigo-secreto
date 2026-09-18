@@ -188,8 +188,6 @@ input{font:inherit}
 .invite-list b.tbd{font-weight:500;font-style:italic;color:#6f544699}
 .is-locked .add,.is-locked .hint,.is-locked .chip button,.is-locked #editEvent,.is-locked #eventForm{display:none !important}
 .is-locked .chip{padding-right:12px}
-.locked p{margin:0;font-size:15px;line-height:1.5;color:var(--ink-soft)}
-.locked .count{font-size:16px;letter-spacing:.1em;padding:0 12px}
 .edit-btn{
   display:block;margin:8px 12px 12px auto;padding:10px 8px;background:none;border:none;
   font-size:14px;font-weight:700;color:var(--ink-soft);
@@ -657,10 +655,6 @@ input{font:inherit}
     </div>
 
     <button class="btn btn-big" id="drawBtn">🎲 Hacer el sorteo</button>
-    <div class="card paper locked" id="lockedNote" hidden>
-      <div class="card-head"><h2>🔒 Sorteo hecho</h2><span class="count" id="lockedSid"></span></div>
-      <p>Cada persona ya recibió su link para descubrir a su amigo secreto. No se puede hacer otro sorteo, así nadie queda repetido.</p>
-    </div>
   </section>
 
   <!-- 2. Elegir modo -->
@@ -1687,8 +1681,6 @@ renderChips();
 if (CONFIG.sorteoHecho) {
   document.body.classList.add('is-locked');
   $('#drawBtn').hidden = true;
-  $('#lockedNote').hidden = false;
-  $('#lockedSid').textContent = BOARD_SID;
   $('#setupLede').textContent = DEMO
     ? '🧪 MODO PRUEBA: este tablero es de mentiras, solo para ver cómo se pinta de verde. No es el sorteo real.'
     : 'En verde van quedando quienes ya descubrieron a su amigo secreto. Así se sabe quién falta 👀';
