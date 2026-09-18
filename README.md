@@ -29,6 +29,10 @@ Al inicio del `<script>` en `index.html` está el bloque `CONFIG`: ahí van el e
 - El nombre no se puede seleccionar, copiar ni imprimir.
 - Una página web no puede bloquear capturas de pantalla ni que alguien reenvíe el link original de WhatsApp; eso solo lo logra una app nativa o un servidor.
 
+## Tablero: quién ya descubrió
+
+La página principal muestra en **verde** a los participantes que ya descubrieron a su amigo secreto (se actualiza cada 30 s). Para compartir el avance entre celulares usa el contador gratuito [Abacus](https://abacus.jasoncameron.dev) (sin cuenta): solo guarda un código anónimo por participante, nunca a quién le tocó. Los links de prueba no cuentan.
+
 ## Cómo se usa
 
 1. Escribe el nombre del evento, el presupuesto y la fecha (opcionales).

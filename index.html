@@ -225,6 +225,20 @@ input{font:inherit}
   font-family:var(--body);font-size:17px;line-height:1;display:grid;place-items:center;
 }
 .chip button:active{background:var(--red);color:#fff}
+.chip.done{
+  background:#22b36b;color:#fff;border:1.5px solid #178a51;
+  box-shadow:0 3px 0 #178a51;
+}
+.chip.done::before{content:"✓";font-family:var(--body);font-weight:800;font-size:17px;margin-right:2px}
+.chip.just-done{animation:go-green .7s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes go-green{0%{transform:rotate(var(--rot)) scale(1)}40%{transform:rotate(var(--rot)) scale(1.25)}100%{transform:rotate(var(--rot)) scale(1)}}
+.board{margin:0 0 16px}
+.board .bar{background:#2b171214;box-shadow:inset 0 1px 3px #0002}
+.board .bar i{background:linear-gradient(90deg,#22b36b,#6fe0a4)}
+.board p{margin:8px 0 0;font-size:14.5px;font-weight:600;color:var(--ink-soft)}
+.board p b{color:#178a51}
+.legend{display:flex;align-items:center;gap:8px;margin:14px 0 0;font-size:13.5px;color:var(--ink-soft)}
+.legend .dot{width:14px;height:14px;border-radius:4px;background:#22b36b;flex:none}
 .chips .empty{font-family:var(--hand);font-size:23px;color:var(--ink-soft);padding:4px 2px}
 @keyframes pop-in{from{opacity:0;transform:scale(.4) rotate(-20deg)}}
 .error{margin:12px 0 0;min-height:0;font-size:14px;font-weight:600;color:var(--red)}
@@ -595,7 +609,7 @@ input{font:inherit}
   <!-- 1. Configuración -->
   <section class="view" id="v-setup">
     <h1 class="title">Amigo<br><em>Secreto</em></h1>
-    <p class="lede">Escribe los nombres, hacemos el sorteo y cada quien saca su papelito. Nadie se saca a sí mismo y ningún nombre se repite.</p>
+    <p class="lede" id="setupLede">Escribe los nombres, hacemos el sorteo y cada quien saca su papelito. Nadie se saca a sí mismo y ningún nombre se repite.</p>
 
     <div class="card paper invite">
       <div class="invite-top">
@@ -633,7 +647,12 @@ input{font:inherit}
         <button class="btn-add" type="submit" aria-label="Agregar">+</button>
       </form>
       <p class="hint">Tip: puedes pegar varios nombres separados por coma.</p>
+      <div class="board" id="board" hidden>
+        <div class="bar"><i id="boardFill"></i></div>
+        <p id="boardText">Revisando quién ya descubrió…</p>
+      </div>
       <ul class="chips" id="chips"></ul>
+      <p class="legend" id="boardLegend" hidden><span class="dot"></span> En verde: ya descubrieron a su amigo secreto</p>
       <p class="error" id="setupError"></p>
     </div>
 
@@ -746,6 +765,7 @@ input{font:inherit}
     <p class="lede">Ya descubriste a tu amigo secreto. Ahora a guardar el secreto y buscar un buen regalo 🤫🎁</p>
     <div class="meta-card paper" id="destroyedMeta"></div>
     <p class="fine">Si de verdad se te olvidó, habla con quien organizó el juego.</p>
+    <button class="btn-ghost" id="seeBoard" hidden>👀 Ver quién falta por descubrir</button>
   </section>
 
   <!-- 6. Todos listos -->
@@ -915,6 +935,26 @@ if (state.pairs && !state.sid) { state.sid = makeSid(); save(); }
 // sorteo ya enviado: ignorar cualquier sorteo de prueba guardado en este celular
 if (CONFIG.sorteoHecho && state.sid !== CONFIG.sorteoHecho) { state.pairs = null; state.mode = null; state.seen = {}; state.sent = {}; save(); }
 const sentCount = () => Object.keys(state.sent || {}).length;
+
+/* ---------- tablero compartido: quién ya descubrió ----------
+   Contador gratuito Abacus (sin cuenta). Solo se guarda un código anónimo por
+   participante con valor ≥ 1 cuando ya descubrió; nunca a quién le tocó. */
+const TRACK_API = 'https://abacus.jasoncameron.dev';
+const trackNs = () => `amigo-secreto-cc-${String(CONFIG.sorteoHecho).toLowerCase()}`;
+function nameKey(n) {
+  let h = 2166136261;
+  for (const ch of norm(n)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return 'p' + (h >>> 0).toString(36);
+}
+const BKEY = 'amigo-secreto-tablero', RKEY = 'amigo-secreto-reportado';
+const discovered = new Set(store.get(BKEY, []));
+function reportDiscovered(giver, sid) {
+  if (!CONFIG.sorteoHecho || sid !== CONFIG.sorteoHecho) return;   // los links de prueba no cuentan
+  if (store.get(RKEY, []).includes(giver)) return;
+  fetch(`${TRACK_API}/hit/${trackNs()}/${nameKey(giver)}`, { cache: 'no-store' })
+    .then(r => { if (r.ok) { const d = store.get(RKEY, []); if (!d.includes(giver)) { d.push(giver); store.set(RKEY, d); } } })
+    .catch(() => {});
+}
 
 /* ---------- sonido (sintetizado, sin archivos) ---------- */
 const audio = (() => {
@@ -1181,9 +1221,10 @@ $('#editEvent').addEventListener('click', () => setEditing($('#eventForm').hidde
 function renderChips() {
   const list = $('#chips');
   list.innerHTML = state.people.length
-    ? state.people.map((p, i) => `<li class="chip" style="--rot:${rot(i)}deg">${esc(p)}<button type="button" data-i="${i}" aria-label="Quitar ${esc(p)}">×</button></li>`).join('')
+    ? state.people.map((p, i) => `<li class="chip${CONFIG.sorteoHecho && discovered.has(p) ? ' done' : ''}" style="--rot:${rot(i)}deg">${esc(p)}<button type="button" data-i="${i}" aria-label="Quitar ${esc(p)}">×</button></li>`).join('')
     : '<li class="empty">Todavía no hay nadie… ¡agrega al primero!</li>';
-  const c = $('#count'); c.textContent = state.people.length;
+  const c = $('#count');
+  c.textContent = CONFIG.sorteoHecho ? `${state.people.filter(p => discovered.has(p)).length}/${state.people.length}` : state.people.length;
   c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump');
   $('#drawBtn').disabled = state.people.length < 3;
   $('#setupError').textContent = state.people.length && state.people.length < 3 ? `Faltan ${3 - state.people.length} para poder sortear (mínimo 3).` : '';
@@ -1390,6 +1431,7 @@ note.addEventListener('click', openNote);
 note.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNote(); } });
 
 function boom() {
+  if (!drawCtx) return;
   const r = note.getBoundingClientRect();
   const f = $('#flash');
   f.style.left = (r.left + r.width / 2) + 'px'; f.style.top = (r.top + r.height / 2) + 'px';
@@ -1400,7 +1442,7 @@ function boom() {
   audio.boom(); audio.fanfare();
   vibrate([40, 30, 110]);
   setTimeout(() => revealInfo.classList.add('show'), 750);
-  if (drawCtx.mode === 'link') { markDestroyed(drawCtx); armLeaveGuard(); setTimeout(startSelfDestruct, 250); }
+  if (drawCtx.mode === 'link') { markDestroyed(drawCtx); reportDiscovered(drawCtx.giver, drawCtx.ev.sid); armLeaveGuard(); setTimeout(startSelfDestruct, 250); }
 }
 
 /* ---------- autodestrucción (solo links) ---------- */
@@ -1616,7 +1658,7 @@ function openFromLink() {
   try { p = decode(code); } catch (e) {}
   if (!p || !p.g || !p.r) { toast('Ese link no es válido 😕'); return false; }
   const ev = { name: p.e, budget: p.b || '', date: p.d || '', time: p.h || '', place: p.l || '', sid: p.s };
-  if (isDestroyed({ giver: p.g, ev })) { showDestroyed(p.g, ev); return true; }
+  if (isDestroyed({ giver: p.g, ev })) { reportDiscovered(p.g, p.s); showDestroyed(p.g, ev); return true; }
   openDraw(p.g, p.r, 'link', ev);
   const tag = $('#drawSid');
   if (p.s) { tag.textContent = `Código del sorteo · ${p.s}`; tag.hidden = false; }
@@ -1643,6 +1685,38 @@ if (CONFIG.sorteoHecho) {
   $('#drawBtn').hidden = true;
   $('#lockedNote').hidden = false;
   $('#lockedSid').textContent = CONFIG.sorteoHecho;
+  $('#setupLede').textContent = 'En verde van quedando quienes ya descubrieron a su amigo secreto. Así se sabe quién falta 👀';
+  $('#board').hidden = false; $('#boardLegend').hidden = false; $('#seeBoard').hidden = false;
+  paintBoard();
+  setInterval(refreshBoard, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshBoard(); });
+}
+$('#seeBoard').addEventListener('click', () => { show('v-setup'); refreshBoard(); });
+function paintBoard(fresh = []) {
+  const total = state.people.length, n = state.people.filter(p => discovered.has(p)).length;
+  $('#boardFill').style.width = (total ? n / total * 100 : 0) + '%';
+  const faltan = total - n;
+  $('#boardText').innerHTML = n === total
+    ? '🎉 <b>¡Todos ya descubrieron a su amigo secreto!</b>'
+    : `<b>${n} de ${total}</b> ya descubrieron · falta${faltan === 1 ? '' : 'n'} ${faltan}`;
+  renderChips();
+  $$('#chips .chip').forEach((li, i) => { if (fresh.includes(state.people[i])) li.classList.add('just-done'); });
+}
+let boardBusy = false;
+async function refreshBoard() {
+  if (!CONFIG.sorteoHecho || boardBusy || !$('#v-setup').classList.contains('active')) return;
+  boardBusy = true;
+  const fresh = [];
+  for (const p of state.people.filter(x => !discovered.has(x))) {
+    try {
+      const r = await fetch(`${TRACK_API}/get/${trackNs()}/${nameKey(p)}`, { cache: 'no-store' });
+      if (r.status === 429) break;                     // límite de peticiones: se reintenta en la próxima vuelta
+      if (r.ok) { const j = await r.json(); if (j.value > 0) { discovered.add(p); fresh.push(p); } }
+    } catch (e) { break; }
+    await wait(150);
+  }
+  boardBusy = false;
+  if (fresh.length) { store.set(BKEY, [...discovered]); paintBoard(fresh); if (!reduced) audio.pop(.5); }
 }
 if (configDupes.length && !location.hash) {
   $('#setupError').textContent = `En la lista hay nombres repetidos (${configDupes.join(', ')}). Si son personas distintas, agrégales el apellido.`;
@@ -1652,6 +1726,7 @@ if (!openFromLink()) {
   else if (state.mode) goMode(state.mode);
   else show('v-mode');
 }
+if (CONFIG.sorteoHecho) refreshBoard();
 })();
 </script>
 </body>
