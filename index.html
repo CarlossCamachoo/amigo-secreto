@@ -786,6 +786,14 @@ input{font:inherit}
     <button class="btn-ghost" id="seeBoard" hidden>👀 Ver quién falta por descubrir</button>
   </section>
 
+  <!-- 5c. Link anterior (anulado) -->
+  <section class="view view-draw" id="v-oldlink">
+    <div class="boom-ico" aria-hidden="true">🔄</div>
+    <p class="kicker" id="oldFor">Papelito</p>
+    <h1 class="title sm">Este link <em>cambió</em></h1>
+    <p class="lede">Se unieron más personas al amigo secreto y tu papelito se actualizó. Pídele tu link nuevo a quien organiza 🙂</p>
+  </section>
+
   <!-- 6. Todos listos -->
   <section class="view" id="v-done">
     <p class="kicker" id="doneEvent">Amigo Secreto</p>
@@ -875,8 +883,13 @@ const CONFIG = {
     'Valentina',
     'El Mono',
     'Adriana',
-    'Juanda'
+    'Juanda',
+    'Ramiro',
+    'Yolanda',
+    'Tato'
   ],
+  // Personas a las que se les envió un link nuevo: su link anterior queda anulado
+  reemitidos: ['Carlos Andres'],
   // 🎁 Deseos: hasta 3 regalos que le gustaría recibir a cada persona.
   // Los ve solo quien le tocó esa persona, justo debajo del nombre al descubrirlo.
   deseos: {
@@ -1505,7 +1518,7 @@ function boom() {
 
 /* ---------- autodestrucción (solo links) ---------- */
 const DKEY = 'amigo-secreto-destruidos';
-const destroyedId = c => `${c.ev.sid || ''}|${c.giver}`;
+const destroyedId = c => `${c.ev.sid || ''}|${c.giver}` + (isReissued(c.giver, c.ev.sid) ? '|v2' : '');
 const isDestroyed = c => store.get(DKEY, []).includes(destroyedId(c));
 function markDestroyed(c) {
   const list = store.get(DKEY, []);
@@ -1713,6 +1726,7 @@ function fnvByte(str) {
   for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   return (h >>> 0) & 0xff;
 }
+const isReissued = (g, sid) => sid === CONFIG.sorteoHecho && (CONFIG.reemitidos || []).some(x => norm(x) === norm(g));
 function decodeShort(t) {
   if (!/^[A-Za-z0-9_-]{7}$/.test(t)) return null;
   let b64 = t.replace(/-/g, '+').replace(/_/g, '/');
@@ -1723,14 +1737,18 @@ function decodeShort(t) {
   const gi = ((b[2] & 0x0f) << 2) | (b[3] >> 6), ri = b[3] & 0x3f;
   let sid = '';
   for (let i = 3; i >= 0; i--) sid += SHORT_ALPHA[(sidBits >> (i * 5)) & 31];
-  if (fnvByte(`${sid}|${gi}|${ri}`) !== b[4]) return null;
   const g = CONFIG_LIST[gi], r = CONFIG_LIST[ri];
   if (!g || !r || g === r) return null;
+  const v2 = fnvByte(`${sid}|${gi}|${ri}|v2`) === b[4];
+  if (!v2 && fnvByte(`${sid}|${gi}|${ri}`) !== b[4]) return null;
+  if (isReissued(g, sid) && !v2) return { old: true, g };     // link anterior de alguien con link nuevo
   return { v: 2, s: sid, g, r, e: CONFIG.evento, b: CONFIG.presupuesto, d: CONFIG.fecha, h: CONFIG.hora, l: CONFIG.lugar };
 }
 function parseCode(code) {
-  if (code.startsWith('s=')) return decode(code.slice(2));
-  if (code.length > 20) return decode(code);          // formato largo guardado por una versión anterior
+  if (code.startsWith('s=') || code.length > 20) {     // formato largo
+    const p = decode(code.startsWith('s=') ? code.slice(2) : code);
+    return p && isReissued(p.g, p.s) ? { old: true, g: p.g } : p;
+  }
   return decodeShort(code);
 }
 const LKEY = 'amigo-secreto-link';
@@ -1748,6 +1766,7 @@ function openFromLink() {
   if (!code) return false;
   let p = null;
   try { p = parseCode(code); } catch (e) {}
+  if (p && p.old) { $('#oldFor').textContent = `Papelito de ${p.g}`; show('v-oldlink'); return true; }
   if (!p || !p.g || !p.r) { toast('Ese link no es válido 😕'); return false; }
   const ev = { name: p.e, budget: p.b || '', date: p.d || '', time: p.h || '', place: p.l || '', sid: p.s };
   if (isDestroyed({ giver: p.g, ev })) { reportDiscovered(p.g, p.s); showDestroyed(p.g, ev, p.r); return true; }
