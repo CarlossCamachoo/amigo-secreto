@@ -603,10 +603,7 @@ input{font:inherit}
 .wish-list li::marker{color:var(--red);font-family:var(--body);font-weight:800;font-size:16px}
 .wish-card{text-align:left;margin:22px 0 0;box-shadow:0 0 0 3px var(--gold),0 3px 0 #cdb58a,0 22px 40px -18px #000c}
 .wish-card .w-empty{margin:0;font-size:15px;line-height:1.45;color:var(--ink-soft)}
-.my-wishes{margin-top:22px}
-.my-wishes p{margin:0 0 12px;font-size:14.5px;line-height:1.45;color:#f7eedbcc}
-#wishSheet .sheet{max-height:92vh;overflow:auto}
-#wishSheet .field{margin-bottom:12px}
+
 
 .meta-card{padding:18px;margin:22px 0 6px;display:grid;gap:10px;font-size:16px}
 .meta-card div{display:flex;gap:10px;align-items:center}
@@ -785,10 +782,6 @@ input{font:inherit}
     <p class="lede">Ya descubriste a tu amigo secreto. Ahora a guardar el secreto y buscar un buen regalo 🤫🎁</p>
     <div class="card paper wish-card" id="destroyedWishes" hidden></div>
     <div class="meta-card paper" id="destroyedMeta"></div>
-    <div class="my-wishes" id="myWishes" hidden>
-      <p id="myWishesText"></p>
-      <button class="btn" id="sendWishes">✍️ Enviar mis 3 deseos</button>
-    </div>
     <p class="fine">Si de verdad se te olvidó, habla con quien organizó el juego.</p>
     <button class="btn-ghost" id="seeBoard" hidden>👀 Ver quién falta por descubrir</button>
   </section>
@@ -851,20 +844,6 @@ input{font:inherit}
 </div>
 
 <div class="big-count" id="bigCount" aria-live="assertive" hidden></div>
-<div class="sheet-back" id="wishSheet" hidden>
-  <form class="sheet paper" id="wishForm" role="dialog" aria-modal="true" aria-labelledby="wishTitle">
-    <h3 id="wishTitle">✍️ Tus 3 deseos</h3>
-    <p>Escribe 3 regalos que te gustaría recibir. Se le envían a quien organiza para que los agregue, y solo los verá quien te sacó 🤫</p>
-    <label class="field"><span>Regalo 1</span><input id="wish1" maxlength="60" placeholder="Ej: Unas medias divertidas"></label>
-    <label class="field"><span>Regalo 2</span><input id="wish2" maxlength="60" placeholder="Ej: Un libro"></label>
-    <label class="field"><span>Regalo 3</span><input id="wish3" maxlength="60" placeholder="Ej: Chocolates"></label>
-    <div class="sheet-actions" style="margin-top:18px">
-      <button class="btn-ghost dark" type="button" id="wishCancel">Cancelar</button>
-      <button class="btn" type="submit">Enviar por WhatsApp</button>
-    </div>
-  </form>
-</div>
-
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 
@@ -898,8 +877,6 @@ const CONFIG = {
     'Adriana',
     'Juanda'
   ],
-  organizador: 'Carlos Andres',
-  whatsappOrganizador: '',  // opcional, con indicativo y sin espacios, ej: '573001234567'
   // 🎁 Deseos: hasta 3 regalos que le gustaría recibir a cada persona.
   // Los ve solo quien le tocó esa persona, justo debajo del nombre al descubrirlo.
   deseos: {
@@ -1602,10 +1579,8 @@ function destroyPage() {
     showDestroyed(ctx.giver, ctx.ev, ctx.receiver);
   }, 1500);
 }
-let wishGiver = null;
 function showDestroyed(giver, ev, receiver) {
   drawCtx = null;
-  wishGiver = giver;
   $('#destroyedFor').textContent = `Papelito de ${giver}`;
   $('#destroyedMeta').innerHTML = metaLines(ev).map(([i, t]) => `<div><span>${i}</span><span>${t}</span></div>`).join('');
   // lista de deseos de su amigo secreto (sin decir el nombre)
@@ -1615,40 +1590,8 @@ function showDestroyed(giver, ev, receiver) {
   box.innerHTML = '<p class="w-title">🎁 Lista de deseos de tu amigo secreto</p>' + (wl.length
     ? wishesHtml(wl)
     : '<p class="w-empty">Todavía no ha dejado su lista. Vuelve a abrir tu link más adelante 😉</p>');
-  // sus propios deseos
-  const mine = wishesFor(giver);
-  $('#myWishes').hidden = false;
-  $('#myWishesText').textContent = mine.length
-    ? `✅ Tus deseos ya están en la lista: ${mine.join(', ')}.`
-    : '¿Y tú qué quieres recibir? Envía tus 3 deseos para que le lleguen a quien te sacó 🎁';
-  $('#sendWishes').textContent = mine.length ? '✍️ Cambiar mis deseos' : '✍️ Enviar mis 3 deseos';
   show('v-destroyed');
 }
-$('#sendWishes').addEventListener('click', () => {
-  const mine = wishesFor(wishGiver);
-  ['#wish1', '#wish2', '#wish3'].forEach((id, i) => { $(id).value = mine[i] || ''; });
-  const sh = $('#wishSheet');
-  sh.hidden = false;
-  requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add('in')));
-});
-function closeWishSheet() {
-  const sh = $('#wishSheet');
-  sh.classList.remove('in');
-  setTimeout(() => { sh.hidden = true; }, 300);
-}
-$('#wishCancel').addEventListener('click', closeWishSheet);
-$('#wishSheet').addEventListener('click', e => { if (e.target.id === 'wishSheet') closeWishSheet(); });
-$('#wishForm').addEventListener('submit', e => {
-  e.preventDefault();
-  const w = ['#wish1', '#wish2', '#wish3'].map(id => $(id).value.replace(/\s+/g, ' ').trim()).filter(Boolean);
-  if (!w.length) { toast('Escribe al menos un regalo 🎁'); return; }
-  const msg = `🎁 Mis deseos para el *Amigo Secreto*\nDe: ${wishGiver}\n\n` + w.map((x, i) => `${i + 1}. ${x}`).join('\n') +
-    `\n\n(${CONFIG.organizador || 'Organizador'}, agrégalos a la página 🙏)`;
-  const num = String(CONFIG.whatsappOrganizador || '').replace(/\D/g, '');
-  window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
-  closeWishSheet();
-  toast('Envíale el mensaje a ' + (CONFIG.organizador || 'quien organiza') + ' 📲');
-});
 function closeReveal() {
   reveal.classList.remove('in');
   return wait(300).then(() => { reveal.hidden = true; reveal.classList.remove('opened', 'quake'); });
