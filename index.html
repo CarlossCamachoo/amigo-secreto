@@ -940,19 +940,23 @@ const sentCount = () => Object.keys(state.sent || {}).length;
    Contador gratuito Abacus (sin cuenta). Solo se guarda un código anónimo por
    participante con valor ≥ 1 cuando ya descubrió; nunca a quién le tocó. */
 const TRACK_API = 'https://abacus.jasoncameron.dev';
-const trackNs = () => `amigo-secreto-cc-${String(CONFIG.sorteoHecho).toLowerCase()}`;
+// ?demo=1 → tablero de prueba aparte (código DEMO): los links de prueba pintan ahí, nunca en el real
+const DEMO = new URLSearchParams(location.search).has('demo');
+const BOARD_SID = DEMO ? 'DEMO' : CONFIG.sorteoHecho;
+const trackNs = () => `amigo-secreto-cc-${String(BOARD_SID).toLowerCase()}`;
 function nameKey(n) {
   let h = 2166136261;
   for (const ch of norm(n)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   return 'p' + (h >>> 0).toString(36);
 }
-const BKEY = 'amigo-secreto-tablero', RKEY = 'amigo-secreto-reportado';
+const BKEY = `amigo-secreto-tablero-${BOARD_SID}`, RKEY = 'amigo-secreto-reportado';
 const discovered = new Set(store.get(BKEY, []));
 function reportDiscovered(giver, sid) {
-  if (!CONFIG.sorteoHecho || sid !== CONFIG.sorteoHecho) return;   // los links de prueba no cuentan
-  if (store.get(RKEY, []).includes(giver)) return;
+  if (!CONFIG.sorteoHecho || sid !== BOARD_SID) return;   // los links de prueba no cuentan en el tablero real
+  const id = `${sid}|${giver}`;
+  if (store.get(RKEY, []).includes(id)) return;
   fetch(`${TRACK_API}/hit/${trackNs()}/${nameKey(giver)}`, { cache: 'no-store' })
-    .then(r => { if (r.ok) { const d = store.get(RKEY, []); if (!d.includes(giver)) { d.push(giver); store.set(RKEY, d); } } })
+    .then(r => { if (r.ok) { const d = store.get(RKEY, []); if (!d.includes(id)) { d.push(id); store.set(RKEY, d); } } })
     .catch(() => {});
 }
 
@@ -1684,8 +1688,10 @@ if (CONFIG.sorteoHecho) {
   document.body.classList.add('is-locked');
   $('#drawBtn').hidden = true;
   $('#lockedNote').hidden = false;
-  $('#lockedSid').textContent = CONFIG.sorteoHecho;
-  $('#setupLede').textContent = 'En verde van quedando quienes ya descubrieron a su amigo secreto. Así se sabe quién falta 👀';
+  $('#lockedSid').textContent = BOARD_SID;
+  $('#setupLede').textContent = DEMO
+    ? '🧪 MODO PRUEBA: este tablero es de mentiras, solo para ver cómo se pinta de verde. No es el sorteo real.'
+    : 'En verde van quedando quienes ya descubrieron a su amigo secreto. Así se sabe quién falta 👀';
   $('#board').hidden = false; $('#boardLegend').hidden = false; $('#seeBoard').hidden = false;
   paintBoard();
   setInterval(refreshBoard, 30000);
