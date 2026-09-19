@@ -1020,13 +1020,14 @@ const TRACK_API = 'https://abacus.jasoncameron.dev';
 // ?demo=1 → tablero de prueba aparte (código DEMO): los links de prueba pintan ahí, nunca en el real
 const DEMO = new URLSearchParams(location.search).has('demo');
 const BOARD_SID = DEMO ? 'DEMO' : CONFIG.sorteoHecho;
-const trackNs = () => DEMO ? 'amigo-secreto-cc-demo-v2' : `amigo-secreto-cc-${String(BOARD_SID).toLowerCase()}`;
+// el sufijo -v2 reinicia el tablero en 0 (el contador anterior quedó con marcas que no eran reales)
+const trackNs = () => DEMO ? 'amigo-secreto-cc-demo-v2' : `amigo-secreto-cc-${String(BOARD_SID).toLowerCase()}-v2`;
 function nameKey(n) {
   let h = 2166136261;
   for (const ch of norm(n)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   return 'p' + (h >>> 0).toString(36);
 }
-const BKEY = `amigo-secreto-tablero-${BOARD_SID}`, RKEY = 'amigo-secreto-reportado';
+const BKEY = `amigo-secreto-tablero-${trackNs()}`, RKEY = 'amigo-secreto-reportado';
 const discovered = new Set(store.get(BKEY, []));
 function reportDiscovered(giver, sid) {
   if (!CONFIG.sorteoHecho || sid !== BOARD_SID) return;   // los links de prueba no cuentan en el tablero real
