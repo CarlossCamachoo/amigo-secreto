@@ -979,7 +979,8 @@ const DEMO_WISHES = {
   'Juanda': ['Un juego de mesa', 'Audífonos', 'Una gorra']
 };
 function wishesFor(name) {
-  const d = DEMO ? DEMO_WISHES : (CONFIG.deseos || {});
+  const real = CONFIG.deseos || {};
+  const d = DEMO && !Object.keys(real).length ? DEMO_WISHES : real;   // la prueba usa los reales si ya existen
   const k = Object.keys(d).find(x => norm(x.trim()) === norm(name || ''));
   return k ? (d[k] || []).map(w => String(w).trim()).filter(Boolean).slice(0, 3) : [];
 }
