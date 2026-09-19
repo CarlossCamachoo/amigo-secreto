@@ -673,7 +673,7 @@ input{font:inherit}
         <p id="boardText">Revisando quién ya descubrió…</p>
       </div>
       <ul class="chips" id="chips"></ul>
-      <p class="legend" id="boardLegend" hidden><span class="dot"></span> En verde: ya descubrieron a su amigo secreto · 📝 ya dejó su lista de deseos</p>
+      <p class="legend" id="boardLegend" hidden><span class="dot"></span> En verde: ya descubrieron a su amigo secreto</p>
       <p class="error" id="setupError"></p>
     </div>
 
@@ -1303,7 +1303,7 @@ $('#editEvent').addEventListener('click', () => setEditing($('#eventForm').hidde
 function renderChips() {
   const list = $('#chips');
   list.innerHTML = state.people.length
-    ? state.people.map((p, i) => `<li class="chip${CONFIG.sorteoHecho && discovered.has(p) ? ' done' : ''}" style="--rot:${rot(i)}deg">${esc(p)}${CONFIG.sorteoHecho && wishesFor(p).length ? ' 📝' : ''}<button type="button" data-i="${i}" aria-label="Quitar ${esc(p)}">×</button></li>`).join('')
+    ? state.people.map((p, i) => `<li class="chip${CONFIG.sorteoHecho && discovered.has(p) ? ' done' : ''}" style="--rot:${rot(i)}deg">${esc(p)}<button type="button" data-i="${i}" aria-label="Quitar ${esc(p)}">×</button></li>`).join('')
     : '<li class="empty">Todavía no hay nadie… ¡agrega al primero!</li>';
   const c = $('#count');
   c.textContent = CONFIG.sorteoHecho ? `${state.people.filter(p => discovered.has(p)).length}/${state.people.length}` : state.people.length;
